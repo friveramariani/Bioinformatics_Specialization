@@ -1,3 +1,6 @@
+__author__ = 'Felix E. Rivera-Mariani, friveramariani@gmail.com, www.friveram.com'
+
+
 # Write a function Motifs(Profile, Dna) that takes a profile matrix Profile corresponding to a list of strings
 # Dna as input and returns a list of the Profile-most probable k-mers in each string from Dna
 
