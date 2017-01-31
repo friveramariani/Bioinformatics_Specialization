@@ -1,4 +1,4 @@
-__author__ = 'Siddhant Srivastava'
+__author__ = 'Felix E. Rivera-Mariani, friveramariani@gmail.com, www.friveram.com'
 
 import sys
 from collections import defaultdict
