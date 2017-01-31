@@ -1,4 +1,4 @@
-__author__ = 'Mohammad Yousuf Ali'
+__author__ = 'Felix E. Rivera-Mariani, friveramariani@gmail.com, www.friveram.com'
 
 def Count(Motifs):
     count = {}
