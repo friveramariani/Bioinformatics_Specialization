@@ -1,76 +1,82 @@
-import sys
+__author__ = 'Felix E. Rivera-Mariani, friveramariani@gmail.com, www.friveram.com'
 
-massTable = {'A': 71, 'C': 103, 'E': 129, 'D': 115, 'G': 57, 'F': 147, \
-			'I': 113, 'H': 137, 'K': 128, 'M': 131, 'L': 113, 'N': 114, \
-			'Q': 128, 'P': 97, 'S': 87, 'R': 156, 'T': 101, 'W': 186, \
-			'V': 99, 'Y': 163,'X':4,'Z':5}
+class Node(object):
+    def __init__(self, value):
+        self.value = value
+        self.children = {}
 
-def get_mass(peptide):
-	if len(peptide) == 0:
-		return 0
-	return sum( massTable[pep] for pep in peptide )
+    def add_child(self, child, acid):
+        self.children[child] = acid
 
-def peptide_vector(peptide):
-	mass = []
-	for i in range(1,len(peptide)+1):
-		mass.append(get_mass(peptide[:i]))
-	pepVec = [0] * max(mass)
-	for mi in mass:
-		pepVec[mi-1] = 1
-	return pepVec
 
-def peptide_identification(proteome,specVec):
-	massSpec = len(specVec)
-	peptides = []
-	for i in range(len(proteome)):
-		for j in range(i+1,len(proteome)):
-			masspep = get_mass(proteome[i:j])
-			if masspep == massSpec:
-				pepVec = peptide_vector(proteome[i:j])
-				if len(pepVec) == len(specVec):
-					peptides.append(proteome[i:j])
-			elif masspep > massSpec:
-				#if the prefix is already larger, then dont need to consider the rest
-				break
-	if len(peptides) != 0:
-		maxScore = float('-inf')
-		for peptide in peptides:
-			pepVec = peptide_vector(peptide)
-			score = sum([pepVec[i]*specVec[i] for i in range(len(pepVec))])
-			if score > maxScore:
-				maxScore = score
-				pepHit = peptide
-	else:
-		pepHit = []
-	return pepHit
+def interpreter(conn):
+    tspec = conn.readline().strip().split(' ')
+    tspecint = [int(x) for x in tspec]
+    tspecint.insert(0, 0)
+    return tspecint
 
-def PSMSearch(SpectralVectors, Proteome, threshold):
-	PSMset = []
-	for specVec in SpectralVectors:
-		peptide = peptide_identification(Proteome,specVec)
-		if len(peptide) != 0:
-			pepVec = peptide_vector(peptide)
-			score = sum([pepVec[i]*specVec[i] for i in range(len(pepVec))])
-			if score >= threshold:
-				PSMset.append(peptide)
-	return set(PSMset)
 
-def main():
-	if len(sys.argv) == 2:
-		filename = sys.argv[1]
-		with open("dataset_11813_10 (4).txt") as f:
-			lines = f.read().splitlines()
-		threshold = int(lines[-1])
-		proteome = lines[-2]
-		specVecs = []
-		for i in range(len(lines)-2):
-			specVecs.append(map(int,lines[i].split(' ')))
-	else:
-		specVecs = ['-1 5 -4 5 3 -1 -4 5 -1 0 0 4 -1 0 1 4 4 4'\
-		,'0 -4 2 -2 -4 4 -5 -1 4 -1 2 5 -3 -1 3 2 -3']
-		proteome = 'XXXZXZXXZXZXXXZXXZX'
-		threshold = 5
+def graph_build(spec, conn):
+    graph = {i: Node(i) for i in spec}
+    for i in spec:
+        for j in spec:
+            if i < j:
+                diff = j-i
+                if diff in mass_to_amino:
+                    conn.write(str(i)+'->'+str(j)+':'+mass_to_amino[diff]+'\n')
+                    graph[i].add_child(j, mass_to_amino[diff])
+    return graph
 
-	#specVecs = [ map(int,spec.split(' ')) for spec in specVecs ]
-	peptides = PSMSearch(specVecs, proteome, threshold)
-	print ('\n'.join(peptides))
+
+def mass(seq):
+    m = 0
+    for lett in seq:
+        m += amino_to_mass[lett]
+    return m
+
+def ideal_spec(seq):
+    spec = list()
+    spec.append(0)
+    spec.append(mass(seq))
+    for i in range(1, len(seq)):
+        spec.append(mass(seq[:i]))
+        spec.append(mass(seq[i:]))
+    spec = list(set(spec))
+    spec.sort()
+    return spec
+
+
+if __name__ == '__main__':
+    with open('integer_mass_table.txt') as e:
+        mass_to_amino = dict()
+        amino_to_mass = dict()
+        for item in e:
+            temp = item.strip().split(' ')
+            try:
+                mass_to_amino[int(temp[1])] = temp[0]
+                amino_to_mass[temp[0]] = int(temp[1])
+            except IndexError:
+                pass
+
+    with open('dataset_11813_10 (6).txt', 'r') as f:
+        spectrum = interpreter(f)
+        final = max(spectrum)
+
+    with open('graph_out.txt', 'w') as g:
+        spec_graph = graph_build(spectrum, g)
+
+    possibles = [(spec_graph[0], '')]
+    out_pep = []
+    while possibles:
+        curr = possibles.pop()
+        if not curr[0].children:
+            if curr[0].value == final:
+                out_pep.append(curr[1])
+        else:
+            for child, acid in curr[0].children.items():
+                possibles.append((spec_graph[child], curr[1]+acid))
+
+    for item in out_pep:
+        spec_out = ideal_spec(item)
+        if spec_out == spectrum:
+            print(item)
